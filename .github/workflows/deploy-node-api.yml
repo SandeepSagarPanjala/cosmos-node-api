@@ -38,7 +38,7 @@ jobs:
           push: true
           # This ensures it runs natively on Apple Silicon (M1/M2/M3)
           platforms: linux/arm64
-          tags: ghcr.io/sandeepsagarpanjala/cosmos-api:latest
+          tags: ghcr.io/sandeepsagarpanjala/cosmos-node-api:latest
 
   # JOB 2: THE STOREFRONT (Runs on your Mac)
   deploy:

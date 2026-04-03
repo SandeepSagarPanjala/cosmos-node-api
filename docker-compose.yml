@@ -18,7 +18,7 @@ services:
   # 2. THE API - The "Manager" with keys to both rooms
   cosmos-api-service:
     container_name: cosmos-api-service
-    image: ghcr.io/sandeepsagarpanjala/cosmos-api:latest
+    image: ghcr.io/sandeepsagarpanjala/cosmos-node-api:latest
     restart: always
     env_file: .env
     expose:
