@@ -1,0 +1,67 @@
+name: cosmos-api-docker
+
+services:
+  # 1. THE GATEKEEPER (Nginx) - Only in the Lobby
+  cosmos-proxy:
+    image: nginx:alpine
+    container_name: cosmos-proxy
+    restart: always
+    ports:
+      - "8090:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - frontend-nw
+    depends_on:
+      - cosmos-api-service
+
+  # 2. THE API - The "Manager" with keys to both rooms
+  cosmos-api-service:
+    container_name: cosmos-api-service
+    image: ghcr.io/sandeepsagarpanjala/cosmos-api:latest
+    restart: always
+    env_file: .env
+    expose:
+      - "3000"
+    networks:
+      - frontend-nw
+      - backend-nw
+    depends_on:
+      - cosmos-db-service
+      - cosmos-redis-service
+
+  # 3. THE DATABASE - Locked in the Vault
+  cosmos-db-service:
+    container_name: cosmos-db-service
+    image: postgres:alpine # Pinned for stability
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: Roadmap
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - backend-nw
+
+  # 4. THE CACHE - Locked in the Vault
+  cosmos-redis-service:
+    container_name: cosmos-redis-service
+    image: redis:alpine # Pinned for stability
+    restart: always
+    ports:
+      - "6380:6379"
+    networks:
+      - backend-nw
+
+# Define the isolated switchboards
+networks:
+  frontend-nw:
+    driver: bridge
+  backend-nw:
+    driver: bridge
+
+volumes:
+  postgres_data:
