@@ -57,9 +57,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # 4. Proxy Port Override: Change local port to 8091 if 8090 is occupied
-  cosmos-proxy:
-    container_name: cosmos-proxy-dev
-    ports:
-      - "8091:80"
