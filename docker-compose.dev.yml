@@ -1,24 +1,21 @@
+# docker-compose.dev.yml - STANDALONE DEV STACK
 name: cosmos-api-dev
 
 services:
-  cosmos-api-service:
+  # 1. THE API - Development Mode
+  cosmos-api-dev:
     container_name: cosmos-api-dev
-    # Build from local source instead of pulling production image
     build:
       context: .
       dockerfile: Dockerfile.dev
-    # Force a quick check/install on startup to ensure tsx is always found
     command: sh -c "pnpm install && pnpm dev"
-    # Re-adding the port override (3001) so you can reach it from your Mac!
     ports:
       - "3001:3000"
-    # Mac Optimization: volume mounts with black-holed node_modules
     volumes:
       - .:/app:delegated
       - /app/node_modules
       - /app/dist
       - /app/.git
-    # Hot-reloading via Docker Compose Watch
     develop:
       watch:
         - action: sync
@@ -33,27 +30,57 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+    networks:
+      - backend-nw
+    # FIXED: Service names now match
+    depends_on:
+      cosmos-db-dev:
+        condition: service_healthy
+      cosmos-redis-dev:
+        condition: service_healthy
     stdin_open: true
     tty: true
 
-  # 2. Database Port Override: Change local port to 5434 if 5433 is occupied
-  cosmos-db-service:
+  # 2. THE DATABASE - Isolated Data
+  cosmos-db-dev:
     container_name: cosmos-db-dev
-    ports:
-      - "5434:5432"
+    image: postgres:alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: Roadmap
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d Roadmap"]
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # 3. Redis Port Override: Change local port to 6381 if 6380 is occupied
-  cosmos-redis-service:
-    container_name: cosmos-redis-dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
     ports:
-      - "6381:6379"
+      - "5434:5432"
+    networks:
+      - backend-nw
+
+  # 3. THE CACHE - Isolated for Dev
+  cosmos-redis-dev:
+    container_name: cosmos-redis-dev
+    image: redis:alpine
+    restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - "6381:6379"
+    networks:
+      - backend-nw
+
+networks:
+  backend-nw:
+    driver: bridge
+
+volumes:
+  # Separate data island
+  postgres_dev_data:
