@@ -1,0 +1,31 @@
+# 1. Base Image - node:20-slim for a minimal footprint
+FROM node:20-slim
+
+# 2. Add dependencies for native modules (if any, like bcrypt)
+# Even though we are on slim, it's good practice to have build essentials
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Enable pnpm for fast installs
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# 4. Set the working directory
+WORKDIR /app
+
+# 5. Copy package files separately to leverage layer caching
+COPY package.json pnpm-lock.yaml ./
+
+# 6. Force development environment so devDependencies (tsx, vitest) are installed
+ENV NODE_ENV=development
+
+# 7. Install all dependencies
+RUN pnpm install
+
+# 8. Expose the API port
+EXPOSE 3000
+
+# 9. Default command
+CMD ["pnpm", "dev"]

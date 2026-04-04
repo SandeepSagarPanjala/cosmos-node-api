@@ -1,67 +1,53 @@
-# Nexus Node API 🚀
+# To Run on Docker
 
-Welcome to the enterprise-grade Node.js backend for the Nexus application suite. This API is built on Express.js and features heavily hardened, industry-standard security architectures including advanced **HttpOnly JWT Token Rotation**.
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
----
+# Roadmap
 
-## 📋 Prerequisites
+# Find and kill on ports
 
-Before you begin, ensure you have the following installed on your machine:
-- **Node.js** (v18 or higher recommended)
-- **PNPM** (We strictly use `pnpm` as our package manager. Do not use `npm` or `yarn`!)
+% lsof -i :3000
+kill -9 $(lsof -t -i:3000)
 
----
+# NGINX
 
-## 🛠 Installation & Setup
+sudo brew services start nginx
+sudo brew services start nginx-ui
+sudo brew services stop nginx
+sudo brew services stop nginx-ui
 
-1. **Install Dependencies**
-   Navigate to this directory and install all required modules exactly as defined in the `pnpm-lock.yaml`:
-   ```bash
-   pnpm install
-   ```
+# PM2 install
 
-2. **Environment Configuration** 🔐
-   We do not commit sensitive API keys or database passwords to version control. You must generate your own local environment file. 
-   
-   Run the following command to copy the template:
-   ```bash
-   cp .env.example .env
-   ```
-   **Important:** Open your newly created `.env` file and replace the dummy strings (like `your_access_token_secret_here`) with actual cryptographic hashes. 
+app.pm2.io
+pm2 link qilc0fxdc0gipun 4o561qhy9dhit55
+pm2 start dist/index.js --name node-api
+pm2 save
 
----
+# PM2 Restart
 
-## 💻 Running the Server
+git pull
+pnpm install
+pnpm run build
+pm2 restart node-api
 
-**Development Mode (Auto-reloads on file shifts):**
-```bash
-pnpm dev
-```
+pm2 list
+pm2 describe node-api
 
-**Production Mode:**
-```bash
-pnpm start
-```
+# Cloudflare
 
-By default, the API will spin up on `http://localhost:3000`.
+brew install cloudflared
+Create Tunner through Network
 
----
+# Github Runner
 
-## 🏛 Architecture Overview
+# Problems
 
-- **`/src/controllers`**: The brain. Handles incoming HTTP requests and structures the outbound JSON responses.
-- **`/src/services`**: The muscle. Handles the heavy lifting, business logic, Database queries, and complex JWT cryptology.
-- **`/src/middlewares`**: The shield. Intercepts traffic to enforce Rate Limiting, Helmet Security Headers, Cors, and JSON parsing.
-- **`/src/constants`**: The dictionary. A centralized location for all magic strings, error messages, and URL structures to support future Internationalization (i18n).
-- **`/src/routes`**: The map. Links your API endpoint URLs (like `/api/auth/login`) directly to their Controller functions.
+n + 1 problem
+db: push
+idel timeout
+login tabindex
+.
 
----
+# Workflow Docker Permission
 
-## 🛡 Security Notes
-- **JWT Master Keys:** The Refresh Tokens are completely stripped from JSON bodies and issued strictly through `HttpOnly`, `SameSite=Strict` cookies.
-- **CORS:** Cross-Origin requests are explicitly locked to specific environments defined in your `.env` (e.g. `http://localhost:4200`).
-- **Rate Limiting:** IP addresses are restricted to 100 requests per 15-minute window to mitigate DDoS attacks.
-
----
-
-*For frontend integration, ensure the Angular proxy or environment API URL is successfully pointing to this Node instance.*
+nano ~/.docker/config.json
