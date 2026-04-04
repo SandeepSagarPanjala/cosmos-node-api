@@ -8,14 +8,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: sh -c "pnpm install && pnpm dev"
+    command: sh -c "pnpm install --no-frozen-lockfile && pnpm db:migrate && pnpm exec tsx --watch --inspect=0.0.0.0:9229 index.ts"
     ports:
       - "3001:3000"
+      - "9229:9229"
     volumes:
       - .:/app:delegated
       - /app/node_modules
       - /app/dist
       - /app/.git
+      - /app/.env # "Black-holes" the prod .env so it doesn't override Dev
     develop:
       watch:
         - action: sync
@@ -30,6 +32,7 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+      - CI=true # Prevents pnpm from asking interactive questions
     networks:
       - backend-nw
     # FIXED: Service names now match
