@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cosmos-redis-service
+  namespace: cosmos-app
+spec:
+  type: LoadBalancer # 🚀 This opens a direct door from your Mac to Redis!
+  selector:
+    app: cosmos-redis
+  ports:
+    - protocol: TCP
+      port: 6380      # 📡 Port on your Mac
+      targetPort: 6379 # 📦 Port inside the Pod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cosmos-redis
+  namespace: cosmos-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cosmos-redis
+  template:
+    metadata:
+      labels:
+        app: cosmos-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"

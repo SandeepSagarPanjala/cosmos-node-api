@@ -48,26 +48,43 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Create the .env from your GitHub Secret
-      - name: Create .env file
+      # 1. Bulk Inject ALL secrets from your GitHub ENV_FILE secret
+      - name: Create and Apply Bulk Secrets
         run: |
+          # Create a temp .env from your GitHub Secret
           echo "${{ secrets.ENV_FILE }}" > .env
-          chmod 600 .env
-
-      # 2. Pull the NATIVE ARM64 image and start it
-      - name: Deploy to Docker
-        run: |
-          docker compose pull
-          docker compose up -d
-
-      # 3. Run Database Migrations
-      - name: Run Database Migrations
-        run: |
-          sleep 5 
-          docker exec cosmos-api-service pnpm run db:migrate
-
-      # 4. Clean up the disk and remove the secret file trace
-      - name: Security & Disk Cleanup
-        run: |
-          docker image prune -f
+          
+          # 🚀 The Industrial Standard: Turn the whole file into a K8s Secret!
+          kubectl create secret generic cosmos-secrets \
+            --from-env-file=.env \
+            --namespace=cosmos-app \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Cleanup temp file
           rm .env
+
+      # 2. Apply other manifests
+      - name: Apply K8s Manifests
+        run: |
+          kubectl apply -f k8s/foundation.yaml
+          kubectl apply -f k8s/redis.yaml
+          kubectl apply -f k8s/postgres.yaml
+          kubectl apply -f k8s/api.yaml
+
+      # 2. Zero-Downtime Restart (Pulls the latest image)
+      - name: Rolling Update Release
+        run: |
+          kubectl rollout restart deployment/cosmos-api -n cosmos-app
+          kubectl rollout status deployment/cosmos-api -n cosmos-app --timeout=60s
+
+      # 3. Automated Database Migrations inside K8s Pod
+      - name: Run K8s Database Migrations
+        run: |
+          API_POD=$(kubectl get pods -n cosmos-app -l app=cosmos-api -o jsonpath="{.items[0].metadata.name}")
+          echo "🚀 Executing migrations on pod: $API_POD"
+          kubectl exec -n cosmos-app $API_POD -- pnpm run db:migrate
+
+      # 4. Cleanup
+      - name: Cluster Cleanup
+        run: |
+          kubectl get all -n cosmos-app
