@@ -32,7 +32,7 @@ spec:
           image: postgres:alpine
           ports:
             - containerPort: 5432
-          environment:
+          env:
             - name: POSTGRES_USER
               value: "postgres"
             - name: POSTGRES_DB
