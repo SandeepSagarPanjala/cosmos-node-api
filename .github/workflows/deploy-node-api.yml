@@ -48,25 +48,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Bulk Inject ALL secrets from your GitHub ENV_FILE secret
+      # 1. Create the Namespace first!
+      - name: Apply K8s Foundation
+        run: |
+          kubectl apply -f k8s/foundation.yaml
+
+      # 2. Bulk Inject ALL secrets into that namespace
       - name: Create and Apply Bulk Secrets
         run: |
           # Create a temp .env from your GitHub Secret
           echo "${{ secrets.ENV_FILE }}" > .env
-          
+
           # 🚀 The Industrial Standard: Turn the whole file into a K8s Secret!
           kubectl create secret generic cosmos-secrets \
             --from-env-file=.env \
             --namespace=cosmos-app \
             --dry-run=client -o yaml | kubectl apply -f -
-          
+
           # Cleanup temp file
           rm .env
 
-      # 2. Apply other manifests
+      # 3. Apply other manifests (Services and Deployments)
       - name: Apply K8s Manifests
         run: |
-          kubectl apply -f k8s/foundation.yaml
           kubectl apply -f k8s/redis.yaml
           kubectl apply -f k8s/postgres.yaml
           kubectl apply -f k8s/api.yaml
