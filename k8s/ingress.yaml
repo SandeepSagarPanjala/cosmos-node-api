@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cosmos-ingress
+  namespace: cosmos-app
+spec:
+  rules:
+    - host: localhost # Or cosmos.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cosmos-api-service
+                port:
+                  number: 80

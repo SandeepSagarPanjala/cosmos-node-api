@@ -51,3 +51,40 @@ login tabindex
 # Workflow Docker Permission
 
 nano ~/.docker/config.json
+
+# K8s
+
+## To Start
+
+### 1. Delete the cluster that is missing the Postgres door
+
+kind delete cluster
+
+### 2. Create the new one with the updated config
+
+kind create cluster --config k8s/kind-config.yaml
+
+### 3. Re-install the Ingress Guard (Nginx)
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
+kubectl apply -f k8s/foundation.yaml
+kubectl create secret generic cosmos-secrets --from-env-file=.env.prod -n cosmos-app
+kubectl apply -f k8s/
+
+## To Delete
+
+kubectl delete -f k8s/
+
+# To See Status of Pods
+
+kubectl get pods -n cosmos-app
+
+kind create cluster --config k8s/kind-config.yaml
+kind delete cluster
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
+kubectl wait --namespace ingress-nginx \
+ --for=condition=ready pod \
+ --selector=app.kubernetes.io/component=controller \
+ --timeout=90s

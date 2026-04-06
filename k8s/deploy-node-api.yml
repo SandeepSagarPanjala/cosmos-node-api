@@ -1,0 +1,85 @@
+name: Deploy Cosmos Api (K8s)
+run-name: K8s Deploy by @${{ github.actor }} 🚀
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          platforms: linux/arm64
+          tags: ghcr.io/sandeepsagarpanjala/cosmos-node-api:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 0. Ensure the runner is talking to Docker Desktop's K8s
+      - name: Setup K8s Context
+        run: |
+          kubectl config use-context docker-desktop
+          kubectl cluster-info || (echo "❌ K8s Cluster not reachable!" && exit 1)
+
+      # 1. Apply Namespace
+      - name: Apply K8s Foundation
+        run: kubectl apply -f k8s/foundation.yaml
+
+      # 2. Inject Secrets (The Industrial Way)
+      - name: Create and Apply Bulk Secrets
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+          kubectl create secret generic cosmos-secrets \
+            --from-env-file=.env \
+            --namespace=cosmos-app \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm .env
+
+      # 3. Deploy Infra & App
+      - name: Apply K8s Manifests
+        run: |
+          kubectl apply -f k8s/
+
+      # 4. Wait for Rollout (Increased timeout for first-time image pulls)
+      - name: Rolling Update Release
+        run: |
+          kubectl rollout restart deployment/cosmos-api -n cosmos-app
+          kubectl rollout status deployment/cosmos-api -n cosmos-app --timeout=180s
+
+      # 5. Database Migrations (Run only after the API is confirmed healthy)
+      - name: Run K8s Database Migrations
+        run: |
+          API_POD=$(kubectl get pods -n cosmos-app -l app=cosmos-api -o jsonpath="{.items[0].metadata.name}")
+          echo "🚀 Executing migrations on pod: $API_POD"
+          kubectl exec -n cosmos-app $API_POD -- pnpm run db:migrate
+
+      - name: Success Summary
+        run: kubectl get pods -n cosmos-app
